@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_CLAS" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <VSEOCLASS>
+    <CLSNAME>ZCL_STRUST</CLSNAME>
+    <LANGU>E</LANGU>
+    <DESCRIPT>Root CA Updater</DESCRIPT>
+    <STATE>1</STATE>
+    <CLSCCINCL>X</CLSCCINCL>
+    <FIXPT>X</FIXPT>
+    <UNICODE>X</UNICODE>
+    <RSTAT>K</RSTAT>
+    <WITH_UNIT_TESTS>X</WITH_UNIT_TESTS>
+   </VSEOCLASS>
+   <DESCRIPTIONS>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_STRUST</CLSNAME>
+     <CMPNAME>CHECK</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Check base things</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_STRUST</CLSNAME>
+     <CMPNAME>CONSTRUCTOR</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Constructor</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_STRUST</CLSNAME>
+     <CMPNAME>C_MOZILLA</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Mozilla Root CA List</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_STRUST</CLSNAME>
+     <CMPNAME>GET_CA_FROM_MOZILLA</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Get Root CA list from Mozilla</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_STRUST</CLSNAME>
+     <CMPNAME>G_CLPSE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>PSE Maintenance</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_STRUST</CLSNAME>
+     <CMPNAME>PARSE_PEM_FILE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Parse PEM file format</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CLSNAME>ZCL_STRUST</CLSNAME>
+     <CMPNAME>UPDATE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Update All Root CA</DESCRIPT>
+    </SEOCOMPOTX>
+   </DESCRIPTIONS>
+  </asx:values>
+ </asx:abap>
+</abapGit>
