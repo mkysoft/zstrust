@@ -33,21 +33,22 @@ CLASS zcl_strust DEFINITION
       RETURNING
         VALUE(r_certs) TYPE tt_certs .
 PROTECTED SECTION.
-  PRIVATE SECTION.
+private section.
 
-    DATA g_source TYPE string .
-    DATA g_clpse TYPE REF TO cl_abap_pse .
-    DATA g_cas   TYPE cl_abap_pse=>t_cert_struct.
+  data G_SOURCE type STRING .
+  data G_CLPSE type ref to CL_ABAP_PSE .
+  data G_CAS type TT_CERTS .
 
-    METHODS get_ca_from_mozilla
-      RETURNING
-        VALUE(r_certs) TYPE tt_certs .
-    METHODS check
-      IMPORTING
-        !i_enddate  TYPE datum
-        !i_serialno TYPE string
-      RAISING
-        cx_trex_http .
+  methods GET_CA_FROM_MOZILLA
+    returning
+      value(R_CERTS) type TT_CERTS .
+  methods CHECK
+    importing
+      !I_ENDDATE type DATUM
+      !I_SERIALNO type STRING
+      !I_ISSUER type STRING
+    raising
+      CX_TREX_HTTP .
 ENDCLASS.
 
 
@@ -60,10 +61,7 @@ CLASS ZCL_STRUST IMPLEMENTATION.
       "error
     ENDIF.
     TRY.
-        CALL METHOD g_clpse->get_trusted_certificates
-          IMPORTING
-            et_certificate_list_typed = g_cas.
-        READ TABLE g_cas WITH KEY serial_no = i_serialno TRANSPORTING NO FIELDS.
+        READ TABLE g_cas WITH KEY serialno = i_serialno issuer = i_issuer TRANSPORTING NO FIELDS.
         CHECK sy-subrc IS NOT INITIAL.
         cx_trex_http=>create( ).
       CATCH cx_abap_pse.
@@ -73,12 +71,38 @@ CLASS ZCL_STRUST IMPLEMENTATION.
 
 
   METHOD constructor.
+    DATA: lt_certs TYPE ssfbintab,
+          lv_cert  TYPE st_cert,
+          lv_bin   TYPE xstring.
+
     g_source = i_source.
     TRY.
         CREATE OBJECT g_clpse
           EXPORTING
             iv_context     = 'SSLC'
             iv_application = 'DFAULT'. " DFAULT,ANONYM
+
+        CALL METHOD g_clpse->get_trusted_certificates
+          IMPORTING
+            et_certificate_list = lt_certs.
+
+        LOOP AT lt_certs INTO lv_bin.
+          CLEAR lv_cert.
+          lv_cert-raw = lv_bin.
+          CALL METHOD cl_abap_pse=>parse_certificate
+            EXPORTING
+              iv_certificite            = lv_bin
+            IMPORTING
+              ev_subject                = lv_cert-subject
+              ev_issuer                 = lv_cert-issuer
+              ev_serialno               = lv_cert-serialno
+              ev_fingerprint            = lv_cert-fingerprint
+              ev_subject_key_identifier = lv_cert-subject_key_identifier
+              ev_public_key_fingerprint = lv_cert-public_key_fingerprint
+              ev_valid_to               = lv_cert-valid_to
+              ev_email_address          = lv_cert-email_address.
+          APPEND lv_cert TO g_cas.
+        ENDLOOP.
       CATCH cx_abap_pse.
     ENDTRY.
   ENDMETHOD.
@@ -87,14 +111,15 @@ CLASS ZCL_STRUST IMPLEMENTATION.
   METHOD get_ca_from_mozilla.
     CONSTANTS: c_url       TYPE string VALUE 'https://ccadb-public.secure.force.com/mozilla/IncludedRootsPEMTxt?TrustBitsInclude=Websites',
                c_ca_end    TYPE datum VALUE '20311011',
-               c_ca_serial TYPE string VALUE '06D8D904D5584346F68A2FA754227EC4'.
+               c_ca_issuer TYPE string VALUE 'CN=DigiCert Global Root CA, OU=www.digicert.com, O=DigiCert Inc, C=US',
+               c_ca_serial TYPE string VALUE '083BE056904246B1A1756AC95991C74A'.
     DATA: lo_client TYPE REF TO if_http_client,
           lv_subrc  TYPE sysubrc,
           lv_certs  TYPE xstring,
           lv_code   TYPE i,
           lv_reason TYPE string.
 
-    check( i_enddate = c_ca_end i_serialno = c_ca_serial ).
+    check( i_enddate = c_ca_end i_serialno = c_ca_serial i_issuer = c_ca_issuer ).
 
     cl_http_client=>create_by_url( EXPORTING url = c_url IMPORTING client = lo_client ).
     lo_client->request->set_method( if_http_request=>co_request_method_get  ).
@@ -175,6 +200,7 @@ CLASS ZCL_STRUST IMPLEMENTATION.
 
 
   METHOD update.
+    CONSTANTS: c_delimeter TYPE string VALUE ',  '.
     DATA: lt_certs TYPE tt_certs,
           lv_cert  LIKE LINE OF lt_certs,
           lv_ok    TYPE abap_bool.
@@ -199,8 +225,8 @@ CLASS ZCL_STRUST IMPLEMENTATION.
         CATCH cx_abap_pse.
           "error
       ENDTRY.
-      REPLACE ALL OCCURRENCES OF ':' IN lv_cert-serialno WITH ''.
-      READ TABLE g_cas WITH KEY serial_no = lv_cert-serialno TRANSPORTING NO FIELDS.
+      " check certificate exists in pse
+      READ TABLE g_cas WITH KEY serialno = lv_cert-serialno issuer = lv_cert-issuer TRANSPORTING NO FIELDS.
       IF sy-subrc IS INITIAL.
         lv_cert-exits = abap_true.
       ENDIF.
