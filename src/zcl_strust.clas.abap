@@ -1,12 +1,12 @@
-CLASS zcl_strust DEFINITION
+class ZCL_STRUST definition
   public
   final
   create public .
 
-  PUBLIC SECTION.
+public section.
 
-    TYPES:
-      BEGIN OF st_cert,
+  types:
+    BEGIN OF st_cert,
         raw                    TYPE xstring,
         subject                TYPE string,
         issuer                 TYPE string,
@@ -16,22 +16,27 @@ CLASS zcl_strust DEFINITION
         public_key_fingerprint TYPE strustpkfingerprint,
         valid_to               TYPE strustvalidto,
         email_address          TYPE strustemail,
-        exits                  type abap_bool.
+        exits                  TYPE abap_bool.
     TYPES: END OF st_cert .
-    TYPES:
-      tt_certs TYPE STANDARD TABLE OF st_cert WITH DEFAULT KEY .
+  types:
+    tt_certs TYPE STANDARD TABLE OF st_cert WITH DEFAULT KEY .
+  types:
+    tt_list  TYPE STANDARD TABLE OF string WITH DEFAULT KEY .
 
-    CONSTANTS c_mozilla TYPE string VALUE 'MOZILLA' ##NO_TEXT.
+  constants C_MOZILLA type STRING value 'MOZILLA' ##NO_TEXT.
 
-    METHODS update .
-    METHODS constructor
-      IMPORTING
-        !i_source TYPE string DEFAULT c_mozilla .
-    METHODS parse_pem_file
-      IMPORTING
-        VALUE(i_pem)   TYPE xstring
-      RETURNING
-        VALUE(r_certs) TYPE tt_certs .
+  methods UPDATE .
+  methods CONSTRUCTOR
+    importing
+      !I_SOURCE type STRING default C_MOZILLA .
+  methods PARSE_PEM_FILE
+    importing
+      value(I_PEM) type XSTRING
+    returning
+      value(R_CERTS) type TT_CERTS .
+  class-methods GET_SOURCES
+    returning
+      value(R_SOURCES) type TT_LIST .
 PROTECTED SECTION.
 private section.
 
@@ -63,7 +68,7 @@ CLASS ZCL_STRUST IMPLEMENTATION.
     TRY.
         READ TABLE g_cas WITH KEY serialno = i_serialno issuer = i_issuer TRANSPORTING NO FIELDS.
         CHECK sy-subrc IS NOT INITIAL.
-        cx_trex_http=>create( ).
+        RAISE EXCEPTION cx_trex_http=>create( ).
       CATCH cx_abap_pse.
         "error
     ENDTRY.
@@ -111,8 +116,8 @@ CLASS ZCL_STRUST IMPLEMENTATION.
   METHOD get_ca_from_mozilla.
     CONSTANTS: c_url       TYPE string VALUE 'https://ccadb-public.secure.force.com/mozilla/IncludedRootsPEMTxt?TrustBitsInclude=Websites',
                c_ca_end    TYPE datum VALUE '20311011',
-               c_ca_issuer TYPE string VALUE 'CN=DigiCert Global Root CA, OU=www.digicert.com, O=DigiCert Inc, C=US',
-               c_ca_serial TYPE string VALUE '083BE056904246B1A1756AC95991C74A'.
+               c_ca_issuer TYPE string VALUE 'CN=DigiCert Global Root CA,OU=www.digicert.com,O=DigiCert Inc,C=US',
+               c_ca_serial TYPE string VALUE '08:3B:E0:56:90:42:46:B1:A1:75:6A:C9:59:91:C7:4A'.
     DATA: lo_client TYPE REF TO if_http_client,
           lv_subrc  TYPE sysubrc,
           lv_certs  TYPE xstring,
@@ -155,6 +160,11 @@ CLASS ZCL_STRUST IMPLEMENTATION.
     lv_certs = lo_client->response->get_data( ).
     r_certs = parse_pem_file( lv_certs ).
 
+  ENDMETHOD.
+
+
+  METHOD get_sources.
+    APPEND c_mozilla TO r_sources.
   ENDMETHOD.
 
 
