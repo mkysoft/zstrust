@@ -28,7 +28,8 @@ public section.
   methods UPDATE .
   methods CONSTRUCTOR
     importing
-      !I_SOURCE type STRING default C_MOZILLA .
+      !I_SOURCE type STRING default C_MOZILLA
+      !I_APPLIC type SSFAPPLSSL default 'DFAULT'.
   methods PARSE_PEM_FILE
     importing
       value(I_PEM) type XSTRING
@@ -43,7 +44,9 @@ private section.
   data G_SOURCE type STRING .
   data G_CLPSE type ref to CL_ABAP_PSE .
   data G_CAS type TT_CERTS .
+  data M_APPLIC type SSFAPPLSSL .
 
+  methods ADD_MOZILLA_URL_CERT .
   methods GET_CA_FROM_MOZILLA
     returning
       value(R_CERTS) type TT_CERTS .
@@ -61,17 +64,56 @@ ENDCLASS.
 CLASS ZCL_STRUST IMPLEMENTATION.
 
 
+  method ADD_MOZILLA_URL_CERT.
+    data: lv_cert_str TYPE string,
+          lv_cert TYPE xstring.
+
+  lv_cert_str = '-----BEGIN CERTIFICATE-----' &&
+                'MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh' &&
+                'MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3' &&
+                'd3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH' &&
+                'MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT' &&
+                'MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j' &&
+                'b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG' &&
+                '9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI' &&
+                '2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx' &&
+                '1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ' &&
+                'q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz' &&
+                'tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ' &&
+                'vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP' &&
+                'BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV' &&
+                '5uNu5g/6+rkS7QYXjzkwDQYJKoZIhvcNAQELBQADggEBAGBnKJRvDkhj6zHd6mcY' &&
+                '1Yl9PMWLSn/pvtsrF9+wX3N3KjITOYFnQoQj8kVnNeyIv/iPsGEMNKSuIEyExtv4' &&
+                'NeF22d+mQrvHRAiGfzZ0JFrabA0UWTW98kndth/Jsw1HKj2ZL7tcu7XUIOGZX1NG' &&
+                'Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91' &&
+                '8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe' &&
+                'pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl' &&
+                'MrY=' &&
+                '-----END CERTIFICATE-----'.
+
+  cl_abap_codepage=>convert_to(
+    EXPORTING
+      source   = lv_cert_str
+      codepage = 'UTF-8'
+    RECEIVING
+      result   = lv_cert
+  ).
+  try.
+      g_clpse->add_trusted_certificate( iv_certificate = lv_cert ).
+      g_clpse->save( ).
+  catch cx_abap_pse.
+    MESSAGE 'Mozilla store certificate couldn''t saved' TYPE 'E'.
+  ENDTRY.
+  endmethod.
+
+
   METHOD check.
     IF i_enddate LT sy-datum.
-      "error
+      MESSAGE 'Invalid certificate enddate' TYPE 'E'.
     ENDIF.
-    TRY.
-        READ TABLE g_cas WITH KEY serialno = i_serialno issuer = i_issuer TRANSPORTING NO FIELDS.
-        CHECK sy-subrc IS NOT INITIAL.
-        RAISE EXCEPTION cx_trex_http=>create( ).
-      CATCH cx_abap_pse.
-        "error
-    ENDTRY.
+    READ TABLE g_cas WITH KEY serialno = i_serialno issuer = i_issuer TRANSPORTING NO FIELDS.
+    CHECK sy-subrc IS NOT INITIAL.
+    MESSAGE 'Certifate couldn''t find' TYPE 'E'.
   ENDMETHOD.
 
 
@@ -81,11 +123,12 @@ CLASS ZCL_STRUST IMPLEMENTATION.
           lv_bin   TYPE xstring.
 
     g_source = i_source.
+    M_APPLIC = I_APPLIC.
     TRY.
         CREATE OBJECT g_clpse
           EXPORTING
             iv_context     = 'SSLC'
-            iv_application = 'DFAULT'. " DFAULT,ANONYM
+            iv_application = I_APPLIC.
 
         CALL METHOD g_clpse->get_trusted_certificates
           IMPORTING
@@ -109,24 +152,34 @@ CLASS ZCL_STRUST IMPLEMENTATION.
           APPEND lv_cert TO g_cas.
         ENDLOOP.
       CATCH cx_abap_pse.
+        MESSAGE 'SSL Client Identity couldn''t open' TYPE 'E'.
     ENDTRY.
   ENDMETHOD.
 
 
   METHOD get_ca_from_mozilla.
-    CONSTANTS: c_url       TYPE string VALUE 'https://ccadb-public.secure.force.com/mozilla/IncludedRootsPEMTxt?TrustBitsInclude=Websites',
-               c_ca_end    TYPE datum VALUE '20311011',
-               c_ca_issuer TYPE string VALUE 'CN=DigiCert Global Root CA,OU=www.digicert.com,O=DigiCert Inc,C=US',
-               c_ca_serial TYPE string VALUE '08:3B:E0:56:90:42:46:B1:A1:75:6A:C9:59:91:C7:4A'.
+    CONSTANTS: c_url       TYPE string VALUE 'https://ccadb.my.salesforce-sites.com/mozilla/IncludedRootsPEMTxt?TrustBitsInclude=Websites',
+               c_ca_end    TYPE datum VALUE '20380115',
+               c_ca_issuer TYPE string VALUE 'CN=DigiCert Global Root G2,OU=www.digicert.com,O=DigiCert Inc,C=US',
+               c_ca_serial TYPE string VALUE '03:3A:F1:E6:A7:11:A9:A0:BB:28:64:B1:1D:09:FA:E5'.
     DATA: lo_client TYPE REF TO if_http_client,
           lv_subrc  TYPE sysubrc,
           lv_certs  TYPE xstring,
           lv_code   TYPE i,
           lv_reason TYPE string.
 
-    check( i_enddate = c_ca_end i_serialno = c_ca_serial i_issuer = c_ca_issuer ).
 
-    cl_http_client=>create_by_url( EXPORTING url = c_url IMPORTING client = lo_client ).
+    READ TABLE g_cas WITH KEY serialno = c_ca_serial issuer = c_ca_issuer TRANSPORTING NO FIELDS.
+    if sy-subrc is not INITIAL.
+      me->add_mozilla_url_cert( ).
+    endif.
+
+    cl_http_client=>create_by_url(
+      EXPORTING
+        url    = c_url
+        ssl_id = M_APPLIC
+      IMPORTING client = lo_client
+    ).
     lo_client->request->set_method( if_http_request=>co_request_method_get  ).
     CALL METHOD lo_client->send
       EXCEPTIONS
@@ -143,8 +196,6 @@ CLASS ZCL_STRUST IMPLEMENTATION.
         http_invalid_state         = 2
         http_processing_failed     = 3.
 
-*    CHECK sy-subrc IS INITIAL.
-
     CALL METHOD lo_client->response->get_status
       IMPORTING
         code   = lv_code
@@ -153,7 +204,7 @@ CLASS ZCL_STRUST IMPLEMENTATION.
     IF lv_code NE 200.
       lo_client->get_last_error( IMPORTING code = lv_subrc ).
       IF lv_subrc NE 200.
-        "add error
+        MESSAGE 'Couldn''t download certificates from web' type 'E'.
       ENDIF.
     ENDIF.
 
@@ -209,21 +260,21 @@ CLASS ZCL_STRUST IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD update.
-    CONSTANTS: c_delimeter TYPE string VALUE ',  '.
-    DATA: lt_certs TYPE tt_certs,
-          lv_cert  LIKE LINE OF lt_certs,
-          lv_ok    TYPE abap_bool.
+  method update.
+    constants: c_delimeter type string value ',  '.
+    data: lt_certs type tt_certs,
+          lv_cert  like line of lt_certs,
+          lv_ok    type abap_bool.
 
     " get root certificates
     lt_certs = get_ca_from_mozilla( ).
-    LOOP AT lt_certs INTO lv_cert.
+    loop at lt_certs into lv_cert.
 
-      TRY.
-          CALL METHOD cl_abap_pse=>parse_certificate
-            EXPORTING
+      try.
+          call method cl_abap_pse=>parse_certificate
+            exporting
               iv_certificite            = lv_cert-raw
-            IMPORTING
+            importing
               ev_subject                = lv_cert-subject
               ev_issuer                 = lv_cert-issuer
               ev_serialno               = lv_cert-serialno
@@ -232,35 +283,35 @@ CLASS ZCL_STRUST IMPLEMENTATION.
               ev_public_key_fingerprint = lv_cert-public_key_fingerprint
               ev_valid_to               = lv_cert-valid_to
               ev_email_address          = lv_cert-email_address.
-        CATCH cx_abap_pse.
+        catch cx_abap_pse.
           "error
-      ENDTRY.
+      endtry.
       " check certificate exists in pse
-      READ TABLE g_cas WITH KEY serialno = lv_cert-serialno issuer = lv_cert-issuer TRANSPORTING NO FIELDS.
-      IF sy-subrc IS INITIAL.
+      read table g_cas with key serialno = lv_cert-serialno issuer = lv_cert-issuer transporting no fields.
+      if sy-subrc is initial.
         lv_cert-exits = abap_true.
-      ENDIF.
-      MODIFY lt_certs FROM lv_cert.
-    ENDLOOP.
+      endif.
+      modify lt_certs from lv_cert.
+    endloop.
 
     " add root certificates
-    LOOP AT lt_certs INTO lv_cert WHERE exits = abap_false.
-      TRY.
+    loop at lt_certs into lv_cert where exits = abap_false.
+      try.
           g_clpse->add_trusted_certificate( iv_certificate = lv_cert-raw ).
           lv_ok = abap_true.
-        CATCH cx_abap_pse INTO DATA(lx_abap_pse).
-          CHECK lx_abap_pse IS INITIAL.
-          "error
-      ENDTRY.
-    ENDLOOP.
+        catch cx_abap_pse into data(lx_abap_pse).
+          check lx_abap_pse is initial.
+          message 'A certificate couldn''t added to store' type 'W'.
+      endtry.
+    endloop.
 
-    CHECK lv_ok IS NOT INITIAL.
-    TRY.
+    check lv_ok is not initial.
+    try.
         g_clpse->save( ).
-      CATCH cx_abap_pse INTO DATA(lx_save).
-        CHECK lx_save IS INITIAL.
-        "error
-    ENDTRY.
+      catch cx_abap_pse into data(lx_save).
+        check lx_save is initial.
+        message 'Certificate store couldn''t saved' type 'E'.
+    endtry.
 
-  ENDMETHOD.
+  endmethod.
 ENDCLASS.

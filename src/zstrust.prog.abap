@@ -8,9 +8,11 @@ REPORT zstrust.
 DATA: lo_strust TYPE REF TO zcl_strust,
       lt_sourcs TYPE vrm_values,
       lv_sourc  TYPE vrm_value,
-      lv_source TYPE string.
+      lv_source TYPE string,
+      IV_APPLIC type SSFAPPLSSL.
 
-PARAMETERS : p_sourc TYPE char20 AS LISTBOX VISIBLE LENGTH 20.
+PARAMETERS : p_sourc TYPE char20 AS LISTBOX VISIBLE LENGTH 20,
+             p_targt TYPE SSFAPPLSSL AS LISTBOX VISIBLE LENGTH 20.
 
 INITIALIZATION.
 
@@ -27,9 +29,28 @@ INITIALIZATION.
       id_illegal_name = 1
       OTHERS          = 2.
 
+  refresh lt_sourcs.
+  select S~APPLIC as key, DESCRIPT as text
+    into table @lt_sourcs
+    FROM STRUSTSSL as S
+    JOIN STRUSTSSLT as L ON S~APPLIC eq L~APPLIC
+                        and L~SPRSL  eq @sy-langu
+   where ACT eq @abap_true.
+
+    CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id              = 'P_TARGT'
+      values          = lt_sourcs
+    EXCEPTIONS
+      id_illegal_name = 1
+      OTHERS          = 2.
+
 START-OF-SELECTION.
 
   lv_source = p_sourc.
-  CREATE OBJECT lo_strust EXPORTING i_source = lv_source.
+  CREATE OBJECT lo_strust EXPORTING i_source = lv_source
+                                    I_APPLIC = p_targt.
 
   lo_strust->update( ).
+
+  MESSAGE 'Completed' type 'S'.

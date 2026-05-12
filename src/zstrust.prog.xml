@@ -21,6 +21,13 @@
      <ENTRY>Source</ENTRY>
      <LENGTH>14</LENGTH>
     </item>
+    <item>
+     <ID>S</ID>
+     <KEY>P_TARGT</KEY>
+     <ENTRY>.</ENTRY>
+     <LENGTH>9</LENGTH>
+     <SPLIT>D</SPLIT>
+    </item>
    </TPOOL>
   </asx:values>
  </asx:abap>
