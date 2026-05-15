@@ -30,11 +30,6 @@
      <DESCRIPT>Mozilla Root CA List</DESCRIPT>
     </SEOCOMPOTX>
     <SEOCOMPOTX>
-     <CMPNAME>GET_CA_FROM_MOZILLA</CMPNAME>
-     <LANGU>E</LANGU>
-     <DESCRIPT>Get Root CA list from Mozilla</DESCRIPT>
-    </SEOCOMPOTX>
-    <SEOCOMPOTX>
      <CMPNAME>G_CLPSE</CMPNAME>
      <LANGU>E</LANGU>
      <DESCRIPT>PSE Maintenance</DESCRIPT>

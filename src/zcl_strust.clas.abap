@@ -1,146 +1,146 @@
-class ZCL_STRUST definition
+class zcl_strust definition
   public
   final
   create public .
 
-public section.
+  public section.
 
-  types:
-    BEGIN OF st_cert,
-        raw                    TYPE xstring,
-        subject                TYPE string,
-        issuer                 TYPE string,
-        serialno               TYPE string,
-        fingerprint            TYPE strustfingerprintsha1,
-        subject_key_identifier TYPE strustsubjectkeyid,
-        public_key_fingerprint TYPE strustpkfingerprint,
-        valid_to               TYPE strustvalidto,
-        email_address          TYPE strustemail,
-        exits                  TYPE abap_bool.
-    TYPES: END OF st_cert .
-  types:
-    tt_certs TYPE STANDARD TABLE OF st_cert WITH DEFAULT KEY .
-  types:
-    tt_list  TYPE STANDARD TABLE OF string WITH DEFAULT KEY .
+    types:
+      begin of st_cert,
+        raw                    type xstring,
+        subject                type string,
+        issuer                 type string,
+        serialno               type string,
+        fingerprint            type strustfingerprintsha1,
+        subject_key_identifier type strustsubjectkeyid,
+        public_key_fingerprint type strustpkfingerprint,
+        valid_to               type strustvalidto,
+        email_address          type strustemail,
+        exits                  type abap_bool.
+    types: end of st_cert .
+    types:
+      tt_certs type standard table of st_cert with default key .
+    types:
+      tt_list  type standard table of string with default key .
 
-  constants C_MOZILLA type STRING value 'MOZILLA' ##NO_TEXT.
+    constants c_mozilla type string value 'MOZILLA' ##NO_TEXT.
 
-  methods UPDATE .
-  methods CONSTRUCTOR
-    importing
-      !I_SOURCE type STRING default C_MOZILLA
-      !I_APPLIC type SSFAPPLSSL default 'DFAULT'.
-  methods PARSE_PEM_FILE
-    importing
-      value(I_PEM) type XSTRING
-    returning
-      value(R_CERTS) type TT_CERTS .
-  class-methods GET_SOURCES
-    returning
-      value(R_SOURCES) type TT_LIST .
-PROTECTED SECTION.
-private section.
+    methods update .
+    methods constructor
+      importing
+        !i_source type string default c_mozilla
+        !i_applic type ssfapplssl default 'DFAULT'.
+    methods parse_pem_file
+      importing
+        value(i_pem)   type xstring
+      returning
+        value(r_certs) type tt_certs .
+    class-methods get_sources
+      returning
+        value(r_sources) type tt_list .
+  protected section.
+  private section.
 
-  data G_SOURCE type STRING .
-  data G_CLPSE type ref to CL_ABAP_PSE .
-  data G_CAS type TT_CERTS .
-  data M_APPLIC type SSFAPPLSSL .
+    data g_source type string .
+    data g_clpse type ref to cl_abap_pse .
+    data g_cas type tt_certs .
+    data m_applic type ssfapplssl .
 
-  methods ADD_MOZILLA_URL_CERT .
-  methods GET_CA_FROM_MOZILLA
-    returning
-      value(R_CERTS) type TT_CERTS .
-  methods CHECK
-    importing
-      !I_ENDDATE type DATUM
-      !I_SERIALNO type STRING
-      !I_ISSUER type STRING
-    raising
-      CX_TREX_HTTP .
-ENDCLASS.
-
-
-
-CLASS ZCL_STRUST IMPLEMENTATION.
+    methods get_mozilla_url_ca .
+    methods get_mozilla_ca_list
+      returning
+        value(r_certs) type tt_certs .
+    methods check
+      importing
+        !i_enddate  type datum
+        !i_serialno type string
+        !i_issuer   type string
+      raising
+        cx_trex_http .
+endclass.
 
 
-  method ADD_MOZILLA_URL_CERT.
-    data: lv_cert_str TYPE string,
-          lv_cert TYPE xstring.
 
-  lv_cert_str = '-----BEGIN CERTIFICATE-----' &&
-                'MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh' &&
-                'MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3' &&
-                'd3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH' &&
-                'MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT' &&
-                'MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j' &&
-                'b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG' &&
-                '9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI' &&
-                '2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx' &&
-                '1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ' &&
-                'q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz' &&
-                'tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ' &&
-                'vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP' &&
-                'BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV' &&
-                '5uNu5g/6+rkS7QYXjzkwDQYJKoZIhvcNAQELBQADggEBAGBnKJRvDkhj6zHd6mcY' &&
-                '1Yl9PMWLSn/pvtsrF9+wX3N3KjITOYFnQoQj8kVnNeyIv/iPsGEMNKSuIEyExtv4' &&
-                'NeF22d+mQrvHRAiGfzZ0JFrabA0UWTW98kndth/Jsw1HKj2ZL7tcu7XUIOGZX1NG' &&
-                'Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91' &&
-                '8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe' &&
-                'pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl' &&
-                'MrY=' &&
-                '-----END CERTIFICATE-----'.
+class zcl_strust implementation.
 
-  cl_abap_codepage=>convert_to(
-    EXPORTING
-      source   = lv_cert_str
-      codepage = 'UTF-8'
-    RECEIVING
-      result   = lv_cert
-  ).
-  try.
-      g_clpse->add_trusted_certificate( iv_certificate = lv_cert ).
-      g_clpse->save( ).
-  catch cx_abap_pse.
-    MESSAGE 'Mozilla store certificate couldn''t saved' TYPE 'E'.
-  ENDTRY.
+
+  method get_mozilla_url_ca.
+    data: lv_cert_str type string,
+          lv_cert     type xstring.
+
+    lv_cert_str = '-----BEGIN CERTIFICATE-----' &&
+                  'MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh' &&
+                  'MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3' &&
+                  'd3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH' &&
+                  'MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT' &&
+                  'MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j' &&
+                  'b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG' &&
+                  '9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI' &&
+                  '2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx' &&
+                  '1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ' &&
+                  'q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz' &&
+                  'tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ' &&
+                  'vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP' &&
+                  'BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV' &&
+                  '5uNu5g/6+rkS7QYXjzkwDQYJKoZIhvcNAQELBQADggEBAGBnKJRvDkhj6zHd6mcY' &&
+                  '1Yl9PMWLSn/pvtsrF9+wX3N3KjITOYFnQoQj8kVnNeyIv/iPsGEMNKSuIEyExtv4' &&
+                  'NeF22d+mQrvHRAiGfzZ0JFrabA0UWTW98kndth/Jsw1HKj2ZL7tcu7XUIOGZX1NG' &&
+                  'Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91' &&
+                  '8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe' &&
+                  'pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl' &&
+                  'MrY=' &&
+                  '-----END CERTIFICATE-----'.
+
+    cl_abap_codepage=>convert_to(
+      exporting
+        source   = lv_cert_str
+        codepage = 'UTF-8'
+      receiving
+        result   = lv_cert
+    ).
+    try.
+        g_clpse->add_trusted_certificate( iv_certificate = lv_cert ).
+        g_clpse->save( ).
+      catch cx_abap_pse.
+        message 'Mozilla store certificate couldn''t saved' type 'E'.
+    endtry.
   endmethod.
 
 
-  METHOD check.
-    IF i_enddate LT sy-datum.
-      MESSAGE 'Invalid certificate enddate' TYPE 'E'.
-    ENDIF.
-    READ TABLE g_cas WITH KEY serialno = i_serialno issuer = i_issuer TRANSPORTING NO FIELDS.
-    CHECK sy-subrc IS NOT INITIAL.
-    MESSAGE 'Certifate couldn''t find' TYPE 'E'.
-  ENDMETHOD.
+  method check.
+    if i_enddate lt sy-datum.
+      message 'Invalid certificate enddate' type 'E'.
+    endif.
+    read table g_cas with key serialno = i_serialno issuer = i_issuer transporting no fields.
+    check sy-subrc is not initial.
+    message 'Certifate couldn''t find' type 'E'.
+  endmethod.
 
 
-  METHOD constructor.
-    DATA: lt_certs TYPE ssfbintab,
-          lv_cert  TYPE st_cert,
-          lv_bin   TYPE xstring.
+  method constructor.
+    data: lt_certs type ssfbintab,
+          lv_cert  type st_cert,
+          lv_bin   type xstring.
 
     g_source = i_source.
-    M_APPLIC = I_APPLIC.
-    TRY.
-        CREATE OBJECT g_clpse
-          EXPORTING
+    m_applic = i_applic.
+    try.
+        create object g_clpse
+          exporting
             iv_context     = 'SSLC'
-            iv_application = I_APPLIC.
+            iv_application = i_applic.
 
-        CALL METHOD g_clpse->get_trusted_certificates
-          IMPORTING
+        call method g_clpse->get_trusted_certificates
+          importing
             et_certificate_list = lt_certs.
 
-        LOOP AT lt_certs INTO lv_bin.
-          CLEAR lv_cert.
+        loop at lt_certs into lv_bin.
+          clear lv_cert.
           lv_cert-raw = lv_bin.
-          CALL METHOD cl_abap_pse=>parse_certificate
-            EXPORTING
+          call method cl_abap_pse=>parse_certificate
+            exporting
               iv_certificite            = lv_bin
-            IMPORTING
+            importing
               ev_subject                = lv_cert-subject
               ev_issuer                 = lv_cert-issuer
               ev_serialno               = lv_cert-serialno
@@ -149,115 +149,115 @@ CLASS ZCL_STRUST IMPLEMENTATION.
               ev_public_key_fingerprint = lv_cert-public_key_fingerprint
               ev_valid_to               = lv_cert-valid_to
               ev_email_address          = lv_cert-email_address.
-          APPEND lv_cert TO g_cas.
-        ENDLOOP.
-      CATCH cx_abap_pse.
-        MESSAGE 'SSL Client Identity couldn''t open' TYPE 'E'.
-    ENDTRY.
-  ENDMETHOD.
+          append lv_cert to g_cas.
+        endloop.
+      catch cx_abap_pse.
+        message 'SSL Client Identity couldn''t open' type 'E'.
+    endtry.
+  endmethod.
 
 
-  METHOD get_ca_from_mozilla.
-    CONSTANTS: c_url       TYPE string VALUE 'https://ccadb.my.salesforce-sites.com/mozilla/IncludedRootsPEMTxt?TrustBitsInclude=Websites',
-               c_ca_end    TYPE datum VALUE '20380115',
-               c_ca_issuer TYPE string VALUE 'CN=DigiCert Global Root G2,OU=www.digicert.com,O=DigiCert Inc,C=US',
-               c_ca_serial TYPE string VALUE '03:3A:F1:E6:A7:11:A9:A0:BB:28:64:B1:1D:09:FA:E5'.
-    DATA: lo_client TYPE REF TO if_http_client,
-          lv_subrc  TYPE sysubrc,
-          lv_certs  TYPE xstring,
-          lv_code   TYPE i,
-          lv_reason TYPE string.
+  method get_mozilla_ca_list.
+    constants: c_url       type string value 'https://ccadb.my.salesforce-sites.com/mozilla/IncludedRootsPEMTxt?TrustBitsInclude=Websites',
+               c_ca_end    type datum value '20380115',
+               c_ca_issuer type string value 'CN=DigiCert Global Root G2,OU=www.digicert.com,O=DigiCert Inc,C=US',
+               c_ca_serial type string value '03:3A:F1:E6:A7:11:A9:A0:BB:28:64:B1:1D:09:FA:E5'.
+    data: lo_client type ref to if_http_client,
+          lv_subrc  type sysubrc,
+          lv_certs  type xstring,
+          lv_code   type i,
+          lv_reason type string.
 
 
-    READ TABLE g_cas WITH KEY serialno = c_ca_serial issuer = c_ca_issuer TRANSPORTING NO FIELDS.
-    if sy-subrc is not INITIAL.
-      me->add_mozilla_url_cert( ).
+    read table g_cas with key serialno = c_ca_serial issuer = c_ca_issuer transporting no fields.
+    if sy-subrc is not initial.
+      me->get_mozilla_url_ca( ).
     endif.
 
     cl_http_client=>create_by_url(
-      EXPORTING
+      exporting
         url    = c_url
-        ssl_id = M_APPLIC
-      IMPORTING client = lo_client
+        ssl_id = m_applic
+      importing client = lo_client
     ).
     lo_client->request->set_method( if_http_request=>co_request_method_get  ).
-    CALL METHOD lo_client->send
-      EXCEPTIONS
+    call method lo_client->send
+      exceptions
         http_communication_failure = 1
         http_invalid_state         = 2
         http_processing_failed     = 3
         http_invalid_timeout       = 4
-        OTHERS                     = 5.
-    CHECK sy-subrc IS INITIAL.
+        others                     = 5.
+    check sy-subrc is initial.
 
-    CALL METHOD lo_client->receive
-      EXCEPTIONS
+    call method lo_client->receive
+      exceptions
         http_communication_failure = 1
         http_invalid_state         = 2
         http_processing_failed     = 3.
 
-    CALL METHOD lo_client->response->get_status
-      IMPORTING
+    call method lo_client->response->get_status
+      importing
         code   = lv_code
         reason = lv_reason.
 
-    IF lv_code NE 200.
-      lo_client->get_last_error( IMPORTING code = lv_subrc ).
-      IF lv_subrc NE 200.
-        MESSAGE 'Couldn''t download certificates from web' type 'E'.
-      ENDIF.
-    ENDIF.
+    if lv_code ne 200.
+      lo_client->get_last_error( importing code = lv_subrc ).
+      if lv_subrc ne 200.
+        message 'Couldn''t download certificates from web' type 'E'.
+      endif.
+    endif.
 
     lv_certs = lo_client->response->get_data( ).
     r_certs = parse_pem_file( lv_certs ).
 
-  ENDMETHOD.
+  endmethod.
 
 
-  METHOD get_sources.
-    APPEND c_mozilla TO r_sources.
-  ENDMETHOD.
+  method get_sources.
+    append c_mozilla to r_sources.
+  endmethod.
 
 
-  METHOD parse_pem_file.
+  method parse_pem_file.
 
-    CONSTANTS: c_begincert TYPE xstring VALUE '2D2D2D2D2D424547494E2043455254494649434154452D2D2D2D2D',
-               c_endcert   TYPE xstring VALUE '2D2D2D2D2D454E442043455254494649434154452D2D2D2D2D'.
-    DATA: lv_subrc TYPE sysubrc,
-          lv_cert  TYPE xstring,
-          ls_cert  TYPE st_cert,
-          lv_start TYPE i,
-          lv_end   TYPE i,
-          lv_pos   TYPE i,
-          lv_len   TYPE i.
+    constants: c_begincert type xstring value '2D2D2D2D2D424547494E2043455254494649434154452D2D2D2D2D',
+               c_endcert   type xstring value '2D2D2D2D2D454E442043455254494649434154452D2D2D2D2D'.
+    data: lv_subrc type sysubrc,
+          lv_cert  type xstring,
+          ls_cert  type st_cert,
+          lv_start type i,
+          lv_end   type i,
+          lv_pos   type i,
+          lv_len   type i.
 
-    SEARCH i_pem FOR c_begincert IN BYTE MODE.
+    search i_pem for c_begincert in byte mode.
     "check error
     lv_start = sy-fdpos.
-    SEARCH i_pem FOR c_endcert IN BYTE MODE.
+    search i_pem for c_endcert in byte mode.
     lv_end = sy-fdpos.
-    WHILE lv_start LT lv_end.
+    while lv_start lt lv_end.
       lv_len = xstrlen( c_begincert ).
-      ADD lv_len TO lv_start.
+      add lv_len to lv_start.
       lv_len = lv_end - lv_start.
 
       lv_cert = i_pem+lv_start(lv_len).
 *      REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf IN lv_cert WITH '' IN BYTE MODE.
       ls_cert-raw = lv_cert.
-      APPEND ls_cert TO r_certs.
+      append ls_cert to r_certs.
 
       lv_pos = lv_end + xstrlen( c_endcert ).
-      SHIFT i_pem BY lv_pos  PLACES IN BYTE MODE.
+      shift i_pem by lv_pos  places in byte mode.
 
-      CLEAR: lv_start, lv_end.
-      SEARCH i_pem FOR c_begincert IN BYTE MODE.
-      CHECK sy-subrc IS INITIAL.
+      clear: lv_start, lv_end.
+      search i_pem for c_begincert in byte mode.
+      check sy-subrc is initial.
       lv_start = sy-fdpos.
-      SEARCH i_pem FOR c_endcert IN BYTE MODE.
-      CHECK sy-subrc IS INITIAL.
+      search i_pem for c_endcert in byte mode.
+      check sy-subrc is initial.
       lv_end = sy-fdpos.
-    ENDWHILE.
-  ENDMETHOD.
+    endwhile.
+  endmethod.
 
 
   method update.
@@ -267,7 +267,7 @@ CLASS ZCL_STRUST IMPLEMENTATION.
           lv_ok    type abap_bool.
 
     " get root certificates
-    lt_certs = get_ca_from_mozilla( ).
+    lt_certs = get_mozilla_ca_list( ).
     loop at lt_certs into lv_cert.
 
       try.
@@ -314,4 +314,4 @@ CLASS ZCL_STRUST IMPLEMENTATION.
     endtry.
 
   endmethod.
-ENDCLASS.
+endclass.
